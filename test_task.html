@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bag Task Test</title>
+<style>
+  body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 16px; background: #fff; color: #222; }
+  .bar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .bar button { font-size: 14px; padding: 6px 12px; }
+  #NextButton { display: none; }
+  pre { white-space: pre-wrap; word-break: break-all; background: #f6f6f6; padding: 8px; font-size: 12px; }
+</style>
+</head>
+<body>
+<!-- Local stand-in for Qualtrics, for testing only. Not part of the survey.
+     Open it by double-clicking. Images load from GitHub Pages, so push the repo first. -->
+<div class="bar">
+  <button id="runPractice">Run practice</button>
+  <button id="runAI">Run AI round</button>
+  <button id="runNoAI">Run NoAI round</button>
+  <label>Time limit (s) <input id="limit" type="number" value="420" style="width:70px"></label>
+  <button id="newDraw">New participant (new draw)</button>
+  <span id="status"></span>
+</div>
+<div id="question"></div>
+<button id="NextButton">Next</button>
+<h3>Embedded data</h3>
+<pre id="ed"></pre>
+
+<script>
+  var ED = {}, handlers = [];
+  var BASE_URL_OVERRIDE = new URLSearchParams(location.search).get("base");   // optional ?base=http://localhost:8000
+  function showED() { document.getElementById("ed").textContent = JSON.stringify(ED, null, 1); }
+  var ctx = {
+    getQuestionContainer: function () { return document.getElementById("question"); },
+    hideNextButton: function () { document.getElementById("NextButton").style.display = "none"; },
+    clickNextButton: function () { document.getElementById("status").textContent = "Next clicked (round ended)"; showED(); }
+  };
+  window.Qualtrics = { SurveyEngine: {
+    addOnload: function (f) { handlers.push(f); },
+    addOnReady: function (f) { handlers.push(f); },
+    setEmbeddedData: function (k, v) { ED[k] = String(v); showED(); },
+    getEmbeddedData: function (k) { return ED[k] || ""; }
+  }};
+</script>
+<script src="1_split.js"></script>
+<script src="0_practice.js"></script>
+<script src="2_task_AI.js"></script>
+<script src="2_task_NoAI.js"></script>
+<script>
+  function draw() { delete ED.set_AI; delete ED.set_NoAI; handlers[0].call(ctx); }
+  draw();
+  function run(idx) {
+    document.getElementById("question").innerHTML = "";
+    document.getElementById("status").textContent = "";
+    var lim = +document.getElementById("limit").value || 420;
+    var src = handlers[idx].toString().replace(/var TIME_LIMIT_S = [^;]+;/, "var TIME_LIMIT_S = " + lim + ";");
+    if (BASE_URL_OVERRIDE) src = src.replace(/var BASE_URL\s*=\s*"[^"]*";/, 'var BASE_URL = "' + BASE_URL_OVERRIDE + '";');
+    (new Function("return " + src)()).call(ctx);
+  }
+  document.getElementById("runPractice").onclick = function () { run(1); };
+  document.getElementById("runAI").onclick = function () { run(2); };
+  document.getElementById("runNoAI").onclick = function () { run(3); };
+  document.getElementById("newDraw").onclick = draw;
+</script>
+</body>
+</html>
